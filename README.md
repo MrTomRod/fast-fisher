@@ -27,6 +27,20 @@ uv sync          # builds the Cython extension and installs dev dependencies
 uv run pytest
 ```
 
+### Release
+
+Wheels are built locally with [cibuildwheel](https://cibuildwheel.pypa.io) (settings in `pyproject.toml`; runs the
+tests against each wheel) and uploaded manually:
+
+```bash
+# bump __version__ in fast_fisher/__init__.py and version in pyproject.toml first
+rm -rf dist wheelhouse
+CIBW_CONTAINER_ENGINE=podman uvx cibuildwheel --platform linux   # -> wheelhouse/
+uv build --sdist                                                 # -> dist/
+uv publish --username __token__ dist/* wheelhouse/*
+git tag -a vX.Y.Z -m "version X.Y.Z" && git push origin master vX.Y.Z
+```
+
 ## Usage
 
 **Recommended usage:**
