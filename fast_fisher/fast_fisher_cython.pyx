@@ -17,6 +17,9 @@ cdef inline _maxn():
     return n
 
 cdef double LN10 = log(10)
+# relative tolerance for ties: tables whose probability equals the observed one (up to rounding) count as
+# 'at least as extreme'. Same as scipy.stats.fisher_exact (1 + 1e-7). pi and pa are -ln(probability) + const.
+cdef double TIE_TOL = 1e-7
 cdef double NINF = INFINITY
 cdef  long long MAXN = _maxn()
 
@@ -49,7 +52,7 @@ cdef inline (double, double, double) mlnTest2(long long a, long long ab, long lo
     if ab * ac < a * abcd:
         for i in range(min(a - 1, llround(ab * ac / abcd)), a_min - 1, -1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             sl_new = sl + exp(pa - pi)
             if sl_new == sl:
@@ -71,7 +74,7 @@ cdef inline (double, double, double) mlnTest2(long long a, long long ab, long lo
             sl = sl_new
         for i in range(max(a + 1, llround(ab * ac / abcd)), a_max + 1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             sr_new = sr + exp(pa - pi)
             if sr_new == sr:
@@ -204,7 +207,7 @@ cdef inline double mlnTest2t(long long a, long long ab, long long ac, long long 
     if ab * ac < a * abcd:
         for i in range(min(a - 1, llround(ab * ac / abcd)), a_min - 1, -1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             st_new = st + exp(pa - pi)
             if st_new == st:
@@ -225,7 +228,7 @@ cdef inline double mlnTest2t(long long a, long long ab, long long ac, long long 
             st = st_new
         for i in range(max(a + 1, llround(ab * ac / abcd)), a_max + 1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             st_new = st + exp(pa - pi)
             if st_new == st:

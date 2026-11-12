@@ -1,5 +1,49 @@
-[build-system]
-requires = [
-    "setuptools",
-    "cython",
+[project]
+name = "fast-fisher"
+version = "0.0.5"
+description = "Calculate Fisher's exact test very quickly."
+readme = "README.md"
+authors = [{ name = "Thomas Roder", email = "roder.thomas@gmail.com" }]
+license = "MIT"
+license-files = ["LICENCE.md"]
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Cython",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
+
+[project.optional-dependencies]
+# only needed for the (optional) fast_fisher.fast_fisher_numba module
+numba = ["numba"]
+
+[project.urls]
+Homepage = "https://github.com/MrTomRod/fast-fisher"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "scipy",
+    "pandas",
+    "numba",
+]
+
+[build-system]
+requires = ["setuptools>=77", "cython>=3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["fast_fisher"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.cibuildwheel]
+# build wheels for all CPython versions we support, skip PyPy and 32-bit builds
+build = "cp310-* cp311-* cp312-* cp313-* cp314-* cp315-*"
+skip = "*-win32 *-manylinux_i686 *-musllinux*"
+test-groups = ["dev"]
+# run the tests from a copy, so they import the installed wheel and not the source tree
+test-sources = ["tests"]
+test-command = "pytest -q tests"

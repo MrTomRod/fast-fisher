@@ -1,5 +1,10 @@
 from .utils import *
 
+try:  # numba is an optional dependency
+    from fast_fisher import fast_fisher_numba
+except ImportError:
+    fast_fisher_numba = None
+
 
 class TestFisher(TestCase):
     def _test(self, function: Callable, name: str, table, scipy_l, scipy_r, scipy_t):
@@ -23,10 +28,10 @@ class TestFisher(TestCase):
             scipy_r = scipy_fisher_exact(a, b, c, d, 'greater')
             scipy_t = scipy_fisher_exact(a, b, c, d, 'two-sided')
 
-            # self._test(fast_fisher_python.test1, 'fast_fisher_python', (a, b, c, d), scipy_l, scipy_r, scipy_t)
-            # self._test(fast_fisher_numba.test1, 'fast_fisher_numba', (a, b, c, d), scipy_l, scipy_r, scipy_t)
-            # self._test(fast_fisher_compiled.test1, 'fast_fisher_compiled', (a, b, c, d), scipy_l, scipy_r, scipy_t)
-            self._test(fast_fisher_cython.test1, 'fast_fisher_compiled', (a, b, c, d), scipy_l, scipy_r, scipy_t)
+            self._test(fast_fisher_python.test1, 'fast_fisher_python', (a, b, c, d), scipy_l, scipy_r, scipy_t)
+            self._test(fast_fisher_cython.test1, 'fast_fisher_cython', (a, b, c, d), scipy_l, scipy_r, scipy_t)
+            if fast_fisher_numba is not None:
+                self._test(fast_fisher_numba.test1, 'fast_fisher_numba', (a, b, c, d), scipy_l, scipy_r, scipy_t)
 
     def _test_with_scipy_n(self, samples, range_max, alternative):
         n_fails = 0
@@ -172,3 +177,21 @@ class TestFisher(TestCase):
             self.assertTrue(is_equivalent(or_orig, or_calc), msg=f'{or_orig=} != {or_calc=}; {[[a, b], [c, d]]}')
 
         print(f'{n_not_equal=} out of {n_range}')
+
+
+def test_ties_are_counted_consistently():
+    """
+    Regression test: tables with the same probability as the observed one must be included in the two-sided
+    p-value regardless of floating point rounding in lgamma (pure-Python version returned 0.745 instead of 1.0).
+    """
+    try:
+        from fast_fisher import fast_fisher_numba as numba_impl
+    except ImportError:
+        numba_impl = None
+    for table in [(98, 3, 146, 6), (8, 2, 1, 5), (3, 3, 3, 3), (12, 5, 7, 9)]:
+        expected = scipy_fisher_exact(*table, 'two-sided')
+        for impl in (fast_fisher_python, fast_fisher_cython, numba_impl):
+            if impl is None:
+                continue
+            assert isclose(impl.test1t(*table), expected, rel_tol=1e-9), (impl.__name__, table)
+            assert isclose(impl.test1(*table)[2], expected, rel_tol=1e-9), (impl.__name__, table)

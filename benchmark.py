@@ -5,7 +5,7 @@
 from timeit import timeit
 from scipy.stats import fisher_exact as fisher_scipy
 from fast_fisher import fast_fisher_python
-from fast_fisher import fast_fisher_compiled
+from fast_fisher import fast_fisher_numba  # pip install fast-fisher[numba]
 from fast_fisher import fast_fisher_cython
 from fisher import pvalue as brentp_fisher  # pip install git+https://github.com/brentp/fishers_exact_test.git
 
@@ -26,10 +26,13 @@ if __name__ == '__main__':
                     'right-tailed': 'greater',
                     'two-tailed': 'two-sided'}
 
-    setup = 'from __main__ import fisher_scipy, fast_fisher_python, fast_fisher_compiled, fast_fisher_cython, brentp_fisher'
+    setup = 'from __main__ import fisher_scipy, fast_fisher_python, fast_fisher_numba, fast_fisher_cython, brentp_fisher'
+    # trigger numba's JIT compilation outside of the timed code
+    for fn in ('test1l', 'test1r', 'test1t'):
+        getattr(fast_fisher_numba, fn)(1, 2, 3, 4)
 
     print('| {:>6s} | {:>6s} | {:>6s} | {:>6s} | {:>12s} | {:>9s} | {:>9s} | {:>10s} | {:>10s} | {:>10s} |'
-          .format('a', 'b', 'c', 'd', 'test type', 'scipy', 'f_python', 'f_compiled', 'f_cython', 'brentp'))
+          .format('a', 'b', 'c', 'd', 'test type', 'scipy', 'f_python', 'f_numba', 'f_cython', 'brentp'))
     print('|-------:|-------:|-------:|-------:|-------------:|----------:|----------:|-----------:|-----------:|-----------:|')
     for a, b, c, d, test_type in [
         (8, 2, 1, 5, 'left-tailed'),
@@ -54,7 +57,7 @@ if __name__ == '__main__':
                    setup=setup, number=100) * 1e4,
             timeit(f'fast_fisher_python.test1{test_type[0]}({a}, {b}, {c}, {d})',
                    setup=setup, number=100) * 1e4,
-            timeit(f'fast_fisher_compiled.test1{test_type[0]}({a}, {b}, {c}, {d})',
+            timeit(f'fast_fisher_numba.test1{test_type[0]}({a}, {b}, {c}, {d})',
                    setup=setup, number=100) * 1e4,
             timeit(f'fast_fisher_cython.test1{test_type[0]}({a}, {b}, {c}, {d})',
                    setup=setup, number=100) * 1e4,

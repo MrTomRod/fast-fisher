@@ -8,3 +8,6 @@ fast_fisher/fast_fisher_compiled.cpython*
 fast_fisher/fast_fisher_cython.c*
 fast_fisher/fast_fisher_cython.h*
 how_to_upload.md
+.venv/
+wheelhouse/
+__pycache__/

@@ -1,8 +1,5 @@
 from math import log, exp, lgamma, nan, inf
 from numba import jit_module
-from numba.pycc import CC
-
-cc = CC('fast_fisher_compiled')
 
 
 def _maxn():
@@ -17,6 +14,9 @@ def _maxn():
 
 
 LN10 = log(10)
+# relative tolerance for ties: tables whose probability equals the observed one (up to rounding) count as
+# 'at least as extreme'. Same as scipy.stats.fisher_exact (1 + 1e-7). pi and pa are -ln(probability) + const.
+TIE_TOL = 1e-7
 NINF = float('-inf')
 MAXN = _maxn()
 
@@ -24,24 +24,20 @@ MAXN = _maxn()
 # ======================== Full Test ========================
 
 
-@cc.export('test1', '(i8, i8, i8, i8)')
 def test1(a, b, c, d):
     result = mlnTest2(a, a + b, a + c, a + b + c + d)
     return exp(-result[0]), exp(-result[1]), exp(-result[2])
 
 
-@cc.export('test2', '(i8, i8, i8, i8)')
 def test2(a, ab, ac, abcd):
     result = mlnTest2(a, ab, ac, abcd)
     return exp(-result[0]), exp(-result[1]), exp(-result[2])
 
 
-@cc.export('mlnTest1', '(i8, i8, i8, i8)')
 def mlnTest1(a, b, c, d):
     return mlnTest2(a, a + b, a + c, a + b + c + d)
 
 
-@cc.export('mlnTest2', '(i8, i8, i8, i8)')
 def mlnTest2(a, ab, ac, abcd):
     if 0 > a or a > ab or a > ac or ab + ac > abcd + a:
         raise ValueError('invalid contingency table')
@@ -57,7 +53,7 @@ def mlnTest2(a, ab, ac, abcd):
     if ab * ac < a * abcd:
         for i in range(min(a - 1, int(round(ab * ac / abcd))), a_min - 1, -1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             sl_new = sl + exp(pa - pi)
             if sl_new == sl:
@@ -79,7 +75,7 @@ def mlnTest2(a, ab, ac, abcd):
             sl = sl_new
         for i in range(max(a + 1, int(round(ab * ac / abcd))), a_max + 1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             sr_new = sr + exp(pa - pi)
             if sr_new == sr:
@@ -88,35 +84,29 @@ def mlnTest2(a, ab, ac, abcd):
         return max(0, pa - p0 - log(sl + 1.)), -log(1. - max(0, exp(p0 - pa) * sl)), max(0, pa - p0 - log(sl + 1. + sr))
 
 
-@cc.export('mlog10Test1', '(i8, i8, i8, i8)')
 def mlog10Test1(a, b, c, d):
     result = mlnTest2(a, a + b, a + c, a + b + c + d)
     return result[0] / LN10, result[1] / LN10, result[2] / LN10
 
 
-@cc.export('mlog10Test2', '(i8, i8, i8, i8)')
 def mlog10Test2(a, ab, ac, abcd):
     result = mlnTest2(a, ab, ac, abcd)
     return result[0] / LN10, result[1] / LN10, result[2] / LN10
 
 
 # ======================== Left Tail Only ========================
-@cc.export('test1l', 'f8(i8, i8, i8, i8)')
 def test1l(a, b, c, d):
     return exp(-mlnTest2l(a, a + b, a + c, a + b + c + d))
 
 
-@cc.export('test2l', 'f8(i8, i8, i8, i8)')
 def test2l(a, ab, ac, abcd):
     return exp(-mlnTest2l(a, ab, ac, abcd))
 
 
-@cc.export('mlnTest1l', '(i8, i8, i8, i8)')
 def mlnTest1l(a, b, c, d):
     return mlnTest2l(a, a + b, a + c, a + b + c + d)
 
 
-@cc.export('mlnTest2l', 'f8(i8, i8, i8, i8)')
 def mlnTest2l(a, ab, ac, abcd):
     if 0 > a or a > ab or a > ac or ab + ac > abcd + a:
         raise ValueError('invalid contingency table')
@@ -146,33 +136,27 @@ def mlnTest2l(a, ab, ac, abcd):
         return max(0, pa - p0 - log(sl))
 
 
-@cc.export('mlog10Test1l', 'f8(i8, i8, i8, i8)')
 def mlog10Test1l(a, b, c, d):
     return mlnTest2l(a, a + b, a + c, a + b + c + d) / LN10
 
 
-@cc.export('mlog10Test2l', 'f8(i8, i8, i8, i8)')
 def mlog10Test2l(a, ab, ac, abcd):
     return mlnTest2l(a, ab, ac, abcd) / LN10
 
 
 # ======================== Right Tail Only ========================
-@cc.export('test1r', 'f8(i8, i8, i8, i8)')
 def test1r(a, b, c, d):
     return exp(-mlnTest2r(a, a + b, a + c, a + b + c + d))
 
 
-@cc.export('test2r', 'f8(i8, i8, i8, i8)')
 def test2r(a, ab, ac, abcd):
     return exp(-mlnTest2r(a, ab, ac, abcd))
 
 
-@cc.export('mlnTest1r', 'f8(i8, i8, i8, i8)')
 def mlnTest1r(a, b, c, d):
     return mlnTest2r(a, a + b, a + c, a + b + c + d)
 
 
-@cc.export('mlnTest2r', 'f8(i8, i8, i8, i8)')
 def mlnTest2r(a, ab, ac, abcd):
     if 0 > a or a > ab or a > ac or ab + ac > abcd + a:
         raise ValueError('invalid contingency table')
@@ -202,33 +186,27 @@ def mlnTest2r(a, ab, ac, abcd):
         return max(0, pa - p0 - log(sr))
 
 
-@cc.export('mlog10Test1r', 'f8(i8, i8, i8, i8)')
 def mlog10Test1r(a, b, c, d):
     return mlnTest2r(a, a + b, a + c, a + b + c + d) / LN10
 
 
-@cc.export('mlog10Test2r', 'f8(i8, i8, i8, i8)')
 def mlog10Test2r(a, ab, ac, abcd):
     return mlnTest2r(a, ab, ac, abcd) / LN10
 
 
 # ======================== Two Tails Only ========================
-@cc.export('test1t', 'f8(i8, i8, i8, i8)')
 def test1t(a, b, c, d):
     return exp(-mlnTest2t(a, a + b, a + c, a + b + c + d))
 
 
-@cc.export('test2t', 'f8(i8, i8, i8, i8)')
 def test2t(a, ab, ac, abcd):
     return exp(-mlnTest2t(a, ab, ac, abcd))
 
 
-@cc.export('mlnTest1t', 'f8(i8, i8, i8, i8)')
 def mlnTest1t(a, b, c, d):
     return mlnTest2t(a, a + b, a + c, a + b + c + d)
 
 
-@cc.export('mlnTest2t', 'f8(i8, i8, i8, i8)')
 def mlnTest2t(a, ab, ac, abcd):
     if 0 > a or a > ab or a > ac or ab + ac > abcd + a:
         raise ValueError('invalid contingency table')
@@ -244,7 +222,7 @@ def mlnTest2t(a, ab, ac, abcd):
     if ab * ac < a * abcd:
         for i in range(min(a - 1, int(round(ab * ac / abcd))), a_min - 1, -1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             st_new = st + exp(pa - pi)
             if st_new == st:
@@ -265,7 +243,7 @@ def mlnTest2t(a, ab, ac, abcd):
             st = st_new
         for i in range(max(a + 1, int(round(ab * ac / abcd))), a_max + 1):
             pi = lgamma(i + 1) + lgamma(ab - i + 1) + lgamma(ac - i + 1) + lgamma(abcd - ab - ac + i + 1)
-            if pi < pa:
+            if pi < pa - TIE_TOL:
                 continue
             st_new = st + exp(pa - pi)
             if st_new == st:
@@ -274,17 +252,14 @@ def mlnTest2t(a, ab, ac, abcd):
     return max(0, pa - p0 - log(st))
 
 
-@cc.export('mlog10Test1t', 'f8(i8, i8, i8, i8)')
 def mlog10Test1t(a, b, c, d):
     return mlnTest2t(a, a + b, a + c, a + b + c + d) / LN10
 
 
-@cc.export('mlog10Test2t', 'f8(i8, i8, i8, i8)')
 def mlog10Test2t(a, ab, ac, abcd):
     return mlnTest2t(a, ab, ac, abcd) / LN10
 
 
-@cc.export('fisher_exact', 'f8(i8, i8, i8, i8, unicode_type)')
 def fisher_exact(a: int, b: int, c: int, d: int, alternative: str) -> float:
     """
     Perform a Fisher exact test on a 2x2 contingency table.
@@ -306,7 +281,6 @@ def fisher_exact(a: int, b: int, c: int, d: int, alternative: str) -> float:
         raise ValueError("`alternative` should be one of {'two-sided', 'less', 'greater'}")
 
 
-@cc.export('odds_ratio', 'f8(i8, i8, i8, i8)')
 def odds_ratio(a: int, b: int, c: int, d: int) -> float:
     """
     Calculate odds ratio of a contingency table.
@@ -331,6 +305,3 @@ jit_module(
     cache=True,
     nogil=True
 )
-
-if __name__ == '__main__':
-    cc.compile()

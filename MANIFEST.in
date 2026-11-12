@@ -1,1 +1,2 @@
 global-include *.pyx
+recursive-include tests *.py

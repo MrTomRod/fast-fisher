@@ -2,21 +2,29 @@
 
 This is heavily based on the work of [painyeph](https://github.com/painyeph/FishersExactTest).
 
-I basically added numba compilation and easier installation. Nevertheless, it makes a big difference speed-wise!
+I basically added compilation (Cython, optionally numba) and easier installation. Nevertheless, it makes a big difference speed-wise!
 
 ## Installation
 
 ```bash
-# First, python-dev / python-devel appears to be required.
-# On Fedora:
-sudo dnf install python3-devel
-# On Debian/Ubuntu:
-sudo apt-get install python3-dev
+pip install fast-fisher  # or: uv add fast-fisher
+```
 
-# Then, install the package using pip:
-pip install git+https://github.com/MrTomRod/fast-fisher
-# or
-pip install fast-fisher  # from https://pypi.org/project/fast-fisher/
+Prebuilt wheels are available for CPython 3.10 – 3.15 on Linux (x86_64), so no compiler is needed there.
+On other platforms, pip builds from source, which requires a C compiler and the Python headers
+(`python3-devel` on Fedora, `python3-dev` on Debian/Ubuntu).
+
+The optional numba implementation (`fast_fisher.fast_fisher_numba`) requires numba:
+
+```bash
+pip install "fast-fisher[numba]"
+```
+
+### Development
+
+```bash
+uv sync          # builds the Cython extension and installs dev dependencies
+uv run pytest
 ```
 
 ## Usage
@@ -65,13 +73,13 @@ Comparison of
 
 - `scipy.stats.fisher_exact` ([scipy docs](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html))
 - `fast_fisher.fast_fisher_python` (this library)
-- `fast_fisher.fast_fisher_compiled` (this library, compiled using numba)
-- `fast_fisher.fast_fisher_cpython` (this library, compiled using cython)
+- `fast_fisher.fast_fisher_numba` (this library, compiled using numba)\*
+- `fast_fisher.fast_fisher_cython` (this library, compiled using cython)
 - `fisher.pvalue` (from [brentp/fishers_exact_test](https://github.com/brentp/fishers_exact_test))
 
 See `benchmark.py`.
 
-|      a |      b |      c |      d |    test type |     scipy |  f_python | f_compiled |   f_cython |     brentp |
+|      a |      b |      c |      d |    test type |     scipy |  f_python |    f_numba |   f_cython |     brentp |
 |-------:|-------:|-------:|-------:|-------------:|----------:|----------:|-----------:|-----------:|-----------:|
 |      8 |      2 |      1 |      5 |  left-tailed |    130 us |      3 us |       0 us |       0 us |       0 us |
 |      8 |      2 |      1 |      5 | right-tailed |    124 us |      3 us |       0 us |       0 us |       0 us |
@@ -88,6 +96,9 @@ See `benchmark.py`.
 |  10000 |  10000 |  10000 |  10000 |  left-tailed |    967 us |    338 us |      27 us |      28 us |    2808 us |
 |  10000 |  10000 |  10000 |  10000 | right-tailed |    969 us |    344 us |      27 us |      28 us |    2820 us |
 |  10000 |  10000 |  10000 |  10000 |   two-tailed |    177 us |    689 us |      54 us |      61 us |    2952 us |
+
+\* These timings were measured with the former ahead-of-time compiled numba module (`fast_fisher_compiled`, removed in
+0.0.5). `fast_fisher_numba` is now JIT-compiled on first use.
 
 While numba seems be marginally faster than the cython, cython is a much better build dependency. Therefore, by default, only the cython version is
 installed.

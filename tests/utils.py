@@ -11,13 +11,7 @@ import pandas as pd
 
 from scipy.stats import fisher_exact
 
-from fast_fisher import fast_fisher_exact, fast_fisher_exact_compatibility, fast_fisher_python, fast_fisher_numba, fast_fisher_cython
-
-try:
-    from fast_fisher import fast_fisher_compiled
-except ImportError:
-    fast_fisher_numba.cc.compile()
-    from fast_fisher import fast_fisher_compiled
+from fast_fisher import fast_fisher_exact, fast_fisher_exact_compatibility, fast_fisher_python, fast_fisher_cython
 
 FISHER_COMBINATIONS = ['abcd', 'acbd', 'badc', 'bdac', 'cadb', 'cdab', 'dbca', 'dcba']
 
@@ -44,7 +38,7 @@ def get_disagreement_df(res):
     df['rank_scipy'] = df.scipy.rank(method='min')
     df['rank_fast'] = df.fast.rank(method='min')
     df['agreement'] = df.rank_scipy == df.rank_fast
-    df.sort_values(by='rank_scipy', inplace=True)
+    df = df.sort_values(by='rank_scipy')
 
     disagreement_df = df[df.rank_scipy != df.rank_fast]
     first_disagreement_rank = disagreement_df.iloc[0]
